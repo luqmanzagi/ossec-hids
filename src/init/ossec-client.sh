@@ -9,7 +9,7 @@ PWD=`pwd`
 DIR=`dirname $PWD`;
 
 
-###  Do not modify bellow here ###
+###  Do not modify below here ###
 NAME="OSSEC HIDS"
 VERSION="v3.0.0"
 AUTHOR="Trend Micro Inc."
@@ -83,7 +83,7 @@ unlock()
 help()
 {
     # Help message
-    echo "Usage: $0 {start|stop|restart|status}";
+    echo "Usage: $0 {start|stop|reload|restart|status}";
     exit 1;
 }
 

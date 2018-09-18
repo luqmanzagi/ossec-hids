@@ -184,6 +184,7 @@ int realtime_process()
     if (len < 0) {
         merror("%s: ERROR: Unable to read from real time buffer.", ARGV0);
     } else if (len > 0) {
+        buf[len] = '\0';
         while (i < (size_t) len) {
             event = (struct inotify_event *) (void *) &buf[i];
 
@@ -311,7 +312,7 @@ int realtime_win32read(win32rtfim *rtlocald)
                                rtlocald->buffer,
                                sizeof(rtlocald->buffer) / sizeof(TCHAR),
                                TRUE,
-                               FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME | FILE_NOTIFY_CHANGE_SIZE | FILE_NOTIFY_CHANGE_LAST_WRITE,
+                               FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME | FILE_NOTIFY_CHANGE_SIZE | FILE_NOTIFY_CHANGE_LAST_WRITE | FILE_NOTIFY_CHANGE_SECURITY,
                                0,
                                &rtlocald->overlap,
                                RTCallBack);
