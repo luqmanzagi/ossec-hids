@@ -1,4 +1,4 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2019 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -68,7 +68,6 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *mail,
 
 /* Send an email */
 int OS_Sendmail(MailConfig *mail, struct tm *p) __attribute__((nonnull));
-int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg) __attribute__((nonnull));
 int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, char *idsname, char *fname, const struct tm *p);
 
 /* Mail timeout used by the file-queue */
@@ -77,6 +76,8 @@ extern unsigned int mail_timeout;
 /* Global var for highest level on mail subjects */
 extern unsigned int   _g_subject_level;
 extern char _g_subject[SUBJECT_SIZE + 2];
+
+void os_sendmail_cb(int fd, short ev, void *arg);
 
 #endif
 

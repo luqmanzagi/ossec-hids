@@ -17,6 +17,7 @@ FILE *_eflog;
 FILE *_aflog;
 FILE *_fflog;
 FILE *_jflog;
+FILE *_ejflog;
 
 /* Global variables */
 static int  __crt_day;
@@ -24,7 +25,7 @@ static char __elogfile[OS_FLSIZE + 1];
 static char __alogfile[OS_FLSIZE + 1];
 static char __flogfile[OS_FLSIZE + 1];
 static char __jlogfile[OS_FLSIZE + 1];
-
+static char __ejlogfile[OS_FLSIZE + 1];
 
 void OS_InitLog()
 {
@@ -37,11 +38,13 @@ void OS_InitLog()
     memset(__elogfile, '\0', OS_FLSIZE + 1);
     memset(__flogfile, '\0', OS_FLSIZE + 1);
     memset(__jlogfile, '\0', OS_FLSIZE + 1);
+    memset(__ejlogfile, '\0', OS_FLSIZE + 1);
 
     _eflog = NULL;
     _aflog = NULL;
     _fflog = NULL;
     _jflog = NULL;
+    _ejflog = NULL;
 
     /* Set the umask */
     umask(0027);
@@ -53,11 +56,14 @@ int OS_GetLogLocation(const Eventinfo *lf)
      * Check if the year directory is there
      * If not, create it. Same for the month directory.
      */
-
+    
+     
     /* For the events */
     if (_eflog) {
         if (ftell(_eflog) == 0) {
-            unlink(__elogfile);
+            if ((unlink(__elogfile)) < 0) {
+                merror("%s: ERROR: Cannot unlink %s: %s", ARGV0, __elogfile, strerror(errno));
+            }
         }
         fclose(_eflog);
         _eflog = NULL;
@@ -90,16 +96,70 @@ int OS_GetLogLocation(const Eventinfo *lf)
     }
 
     /* Create a symlink */
-    unlink(EVENTS_DAILY);
+    if ((unlink(EVENTS_DAILY)) < 0) {
+        merror("%s: ERROR: Cannot unlink file %s: %s", ARGV0, EVENTS_DAILY, strerror(errno));
+    }
 
     if (link(__elogfile, EVENTS_DAILY) == -1) {
         ErrorExit(LINK_ERROR, ARGV0, __elogfile, EVENTS_DAILY, errno, strerror(errno));
     }
+    /* For the events in JSON */
+    if (Config.logall_json) {
+        /* Create the json archives logfile name */
 
+        if (_ejflog) {
+            if (ftell(_ejflog) == 0) {
+                if ((unlink(__ejlogfile)) < 0) {
+                    merror("%s: ERROR: Cannot unlink file %s: %s", ARGV0, __ejlogfile, strerror(errno));
+                }
+            }
+            fclose(_ejflog);
+            _ejflog = NULL;
+        }
+
+        snprintf(__ejlogfile, OS_FLSIZE, "%s/%d/", EVENTS, lf->year);
+        if (IsDir(__ejlogfile) == -1)
+            if (mkdir(__ejlogfile, 0770) == -1) {
+                ErrorExit(MKDIR_ERROR, ARGV0, __ejlogfile, errno, strerror(errno));
+        }
+
+        snprintf(__ejlogfile, OS_FLSIZE, "%s/%d/%s", EVENTS, lf->year, lf->mon);
+
+        if (IsDir(__ejlogfile) == -1)
+            if (mkdir(__ejlogfile, 0770) == -1) {
+                ErrorExit(MKDIR_ERROR, ARGV0, __ejlogfile, errno, strerror(errno));
+        }
+
+
+        snprintf(__ejlogfile, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.json",
+                 EVENTS,
+                 lf->year,
+                 lf->mon,
+                 "archive",
+                 lf->day);
+
+        _ejflog = fopen(__ejlogfile, "a");
+
+        if (!_ejflog) {
+            ErrorExit("%s: Error opening logfile: '%s'", ARGV0, __ejlogfile);
+        }
+
+        /* Create a symlink */
+        if ((unlink(EVENTSJSON_DAILY)) < 0) {
+            merror("%s: ERROR: Cannot unlink file %s: %s", ARGV0, EVENTSJSON_DAILY, strerror(errno));
+        }
+
+        if (link(__ejlogfile, EVENTSJSON_DAILY) == -1) {
+            ErrorExit(LINK_ERROR, ARGV0, __ejlogfile, EVENTSJSON_DAILY, errno, strerror(errno));
+        }
+    }
+    
     /* For the alerts logs */
     if (_aflog) {
         if (ftell(_aflog) == 0) {
-            unlink(__alogfile);
+            if ((unlink(__alogfile)) < 0) {
+                merror("%s: ERROR: Cannot unlink file %s: %s", ARGV0, __alogfile, strerror(errno));
+            }
         }
         fclose(_aflog);
         _aflog = NULL;
@@ -133,7 +193,9 @@ int OS_GetLogLocation(const Eventinfo *lf)
     }
 
     /* Create a symlink */
-    unlink(ALERTS_DAILY);
+    if ((unlink(ALERTS_DAILY)) < 0) {
+        merror("%s: ERROR: Cannot unlink file %s: %s", ARGV0, ALERTS_DAILY, strerror(errno));
+    }
 
     if (link(__alogfile, ALERTS_DAILY) == -1) {
         ErrorExit(LINK_ERROR, ARGV0, __alogfile, ALERTS_DAILY, errno, strerror(errno));
@@ -143,11 +205,28 @@ int OS_GetLogLocation(const Eventinfo *lf)
 
         if (_jflog) {
             if (ftell(_jflog) == 0) {
-                unlink(__jlogfile);
+                if ((unlink(__jlogfile)) < 0) {
+                    merror("%s: ERROR: Cannot unlink file %s: %s", ARGV0, __jlogfile, strerror(errno));
+                }
             }
             fclose(_jflog);
             _jflog = NULL;
         }
+
+        snprintf(__jlogfile, OS_FLSIZE, "%s/%d/", ALERTS, lf->year);
+        if (IsDir(__jlogfile) == -1)
+            if (mkdir(__jlogfile, 0770) == -1) {
+                ErrorExit(MKDIR_ERROR, ARGV0, __jlogfile, errno, strerror(errno));
+            }
+
+        snprintf(__jlogfile, OS_FLSIZE, "%s/%d/%s", ALERTS, lf->year, lf->mon);
+
+        if (IsDir(__jlogfile) == -1)
+            if (mkdir(__jlogfile, 0770) == -1) {
+                ErrorExit(MKDIR_ERROR, ARGV0, __jlogfile, errno, strerror(errno));
+            }
+
+
 
         /* Create the json logfile name */
         snprintf(__jlogfile, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.json",
@@ -164,7 +243,9 @@ int OS_GetLogLocation(const Eventinfo *lf)
         }
 
         /* Create a symlink */
-        unlink(ALERTSJSON_DAILY);
+        if ((unlink(ALERTSJSON_DAILY)) < 0) {
+            merror("%s: ERROR: Cannot unlink file %s: %s", ARGV0, ALERTSJSON_DAILY, strerror(errno));
+        }
 
         if (link(__jlogfile, ALERTSJSON_DAILY) == -1) {
             ErrorExit(LINK_ERROR, ARGV0, __jlogfile, ALERTSJSON_DAILY, errno, strerror(errno));
@@ -175,7 +256,9 @@ int OS_GetLogLocation(const Eventinfo *lf)
     /* For the firewall events */
     if (_fflog) {
         if (ftell(_fflog) == 0) {
-            unlink(__flogfile);
+            if ((unlink(__flogfile)) < 0) {
+                merror("%s: ERROR: Cannot unlink file %s: %s", ARGV0, __flogfile, strerror(errno));
+            }
         }
         fclose(_fflog);
         _fflog = NULL;
@@ -209,7 +292,9 @@ int OS_GetLogLocation(const Eventinfo *lf)
     }
 
     /* Create a symlink */
-    unlink(FWLOGS_DAILY);
+    if ((unlink(FWLOGS_DAILY)) < 0) {
+        merror("%s: ERROR: Cannot unlink file %s: %s", ARGV0, FWLOGS_DAILY, strerror(errno));
+    }
 
     if (link(__flogfile, FWLOGS_DAILY) == -1) {
         ErrorExit(LINK_ERROR, ARGV0, __flogfile, FWLOGS_DAILY, errno, strerror(errno));

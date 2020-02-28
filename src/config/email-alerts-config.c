@@ -6,7 +6,6 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
-
 #include "shared.h"
 #include "mail-config.h"
 #include "config.h"
@@ -157,9 +156,7 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
             }
 
         } else if (strcmp(node[i]->element, xml_email_format) == 0) {
-            if (strcmp(node[i]->content, "sms") == 0) {
-                Mail->gran_format[granto_size] = SMS_FORMAT;
-            } else if (strcmp(node[i]->content, "default") == 0) {
+            if (strcmp(node[i]->content, "default") == 0) {
                 /* Default is full format */
             } else {
                 merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);

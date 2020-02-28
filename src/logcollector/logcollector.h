@@ -53,6 +53,9 @@ void *read_postgresql_log(int pos, int *rc, int drop_it);
 /* read multi line logs */
 void *read_multiline(int pos, int *rc, int drop_it);
 
+/* read indented multi line logs */
+void *read_multiline_indented(int pos, int *rc, int drop_it);
+
 /* Read DJB multilog format */
 /* Initializes multilog */
 int init_djbmultilog(int pos);
@@ -61,6 +64,9 @@ void *read_djbmultilog(int pos, int *rc, int drop_it);
 /* Read events from output of command */
 void *read_command(int pos, int *rc, int drop_it);
 void *read_fullcommand(int pos, int *rc, int drop_it);
+
+/* Read auditd events */
+void *read_audit(int pos, int *rc, int drop_it);
 
 #ifdef WIN32
 void win_startel();
@@ -77,4 +83,3 @@ extern int open_file_attempts;
 extern logreader *logff;
 
 #endif /* __LOGREADER_H */
-

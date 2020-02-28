@@ -145,7 +145,7 @@ OSNetInfo *OS_Bindport(char *_port, unsigned int _proto, const char *_ip)
                           (char *)&flag, sizeof(flag)) < 0) {
                 verbose ("setsockopt error: SO_REUSEADDR %d: %s",
                          errno, strerror(errno));
-                if(ossock) {
+                if(ossock > 0) {
                     OS_CloseSocket(ossock);
                 }
                 continue;
@@ -194,11 +194,11 @@ OSNetInfo *OS_Bindport(char *_port, unsigned int _proto, const char *_ip)
     /* check to see if at least one address succeeded */
     if (ni->fdcnt == 0) {
         verbose ("Request to allocate and bind sockets failed.");
-        if(ossock) {
-            OS_CloseSocket(ossock);
-        }
         ni->status = -1;
         ni->retval = OS_SOCKTERR;
+        if(result) {
+            freeaddrinfo(result);
+        }
         return(ni);
     }
 
@@ -229,7 +229,13 @@ int OS_BindUnixDomain(const char *path, mode_t mode, int max_msg_size)
     socklen_t optlen = sizeof(len);
 
     /* Make sure the path isn't there */
-    unlink(path);
+    int urc = -1;
+    if (( urc = unlink(path)) < 0) {
+        /* XXX I think we're blindly unlinking path, so if it doesn't exist, don't log an error */
+        if (urc != ENOENT) {
+            merror("ERROR: Cannot unlink file %s: %s", path, strerror(errno));
+        }
+    }
 
     memset(&n_us, 0, sizeof(n_us));
     n_us.sun_family = AF_UNIX;
@@ -407,7 +413,9 @@ int OS_Connect(char *_port, unsigned int protocol, const char *_ip)
         }
     }
     if (rp == NULL) {               /* No address succeeded */
-        OS_CloseSocket(ossock);
+        if (ossock > 0) {
+            OS_CloseSocket(ossock);
+        }
         if(result) {
             freeaddrinfo(result);
         }
@@ -528,7 +536,7 @@ int OS_RecvTCPBuffer(int socket, char *buffer, int sizet)
 
     if ((retsize = recv(socket, buffer, sizet - 1, 0)) > 0) {
         buffer[retsize] = '\0';
-        return (0);
+        return (retsize);
     }
     return (-1);
 }
@@ -621,6 +629,9 @@ char *OS_GetHost(const char *host, unsigned int attempts)
         }
 
         if ((ip = (char *) calloc(IPSIZE, sizeof(char))) == NULL) {
+            if (result) {
+                freeaddrinfo(result);
+            }
             return (NULL);
         }
 
@@ -830,4 +841,21 @@ char *DecodeProtocol (int val) {
 
     return (buf);
 }
+
+#ifndef WIN32
+/* Set a socket to be non-blocking */
+int setnonblock(int fd) {
+    int flags;
+
+    flags = fcntl(fd, F_GETFL);
+    if (flags < 0)
+        return flags;
+    flags |= O_NONBLOCK;
+    if (fcntl(fd, F_SETFL, flags) < 0) {
+        return -1;
+    }
+
+    return 0;
+}
+#endif //WIN32
 
