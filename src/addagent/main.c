@@ -17,6 +17,7 @@ static void print_banner(void);
 static void manage_shutdown(int sig) __attribute__((noreturn));
 #endif
 
+int willchroot;
 
 #if defined(__MINGW32__)
 static int setenv(const char *name, const char *val, __attribute__((unused)) int overwrite)
@@ -57,7 +58,7 @@ static void helpmsg()
 static void print_banner()
 {
     printf("\n");
-    printf(BANNER, __ossec_name, __version);
+    printf(BANNER, __ossec_name, __ossec_version);
 
 #ifdef CLIENT
     printf(BANNER_CLIENT);

@@ -35,7 +35,7 @@ void send_win32_info(time_t curr_time);
 /* Help message */
 void agent_help()
 {
-    printf("\n%s %s %s .\n", __ossec_name, ARGV0, __version);
+    printf("\n%s %s %s .\n", __ossec_name, ARGV0, __ossec_version);
     printf("Available options:\n");
     printf("\t/?                This help message.\n");
     printf("\t-h                This help message.\n");
@@ -124,6 +124,7 @@ int local_start()
     WSADATA wsaData;
     DWORD  threadID;
     DWORD  threadID2;
+    extern agent *agt;
 
     /* Start agent */
     agt = (agent *)calloc(1, sizeof(agent));
@@ -271,6 +272,7 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
     char tmpstr[OS_MAXSTR + 2];
     char crypt_msg[OS_MAXSTR + 2];
     DWORD dwWaitResult;
+    extern agent *agt;
 
     tmpstr[OS_MAXSTR + 1] = '\0';
     crypt_msg[OS_MAXSTR + 1] = '\0';
@@ -467,6 +469,8 @@ void send_win32_info(time_t curr_time)
 
     tmp_msg[OS_MAXSTR + 1] = '\0';
     crypt_msg[OS_MAXSTR + 1] = '\0';
+
+    extern agent *agt;
 
     debug1("%s: DEBUG: Sending keep alive message.", ARGV0);
 

@@ -21,7 +21,6 @@ OSSEC_USER?=ossec
 OSSEC_USER_MAIL?=ossecm
 OSSEC_USER_REM?=ossecr
 
-INSTALL_CMD?=install -m $(1) -o $(2) -g $(3)
 INSTALL_LOCALTIME?=yes
 INSTALL_RESOLVCONF?=yes
 
@@ -30,6 +29,7 @@ USE_ZEROMQ?=no
 USE_GEOIP?=no
 USE_INOTIFY=no
 USE_PCRE2_JIT=yes
+USE_SYSTEMD?=yes
 
 ifneq (${TARGET},winagent)
 	USE_OPENSSL?=auto
@@ -65,13 +65,19 @@ OSSEC_LDFLAGS=${LDFLAGS} -lm
 ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
 		DEFINES+=-DINOTIFY_ENABLED
-#		DEFINES+=-DUSE_MAGIC
 		OSSEC_LDFLAGS+=-lpthread
+ifeq (${USE_SYSTEMD},yes)
+		DEFINES+=-DHAVE_SYSTEMD
+		OSSEC_LDFLAGS+=-lsystemd
+endif
+#		DEFINES+=-DUSE_MAGIC
 #		OSSEC_LDFLAGS+=-lmagic
 else
 ifeq (${uname_S},AIX)
 		DEFINES+=-DAIX
 		DEFINES+=-DHIGHFIRST
+		CFLAGS+=-I./external/compat/aix
+		OSSEC_LDFLAGS+=-lpthread
 		PATH:=${PATH}:/usr/vac/bin
 else
 ifeq (${uname_S},SunOS)
@@ -101,6 +107,7 @@ ifeq (${uname_S},NetBSD)
 		LUA_PLAT=posix
 		CFLAGS+=-I/usr/local/include
 		OSSEC_LDFLAGS+=-L/usr/local/lib
+		USE_PCRE2_JIT=n
 else
 ifeq (${uname_S},OpenBSD)
 #		DEFINES+=-DOpenBSD
@@ -134,6 +141,12 @@ ifneq (${uname_S},OpenBSD)
         COMPAT_FILES+=./external/compat/imsg.c ./external/compat/imsg-buffer.c
 endif
 
+ifeq (${uname_S},AIX)
+        INSTALL_CMD?=./install-shim-aix.ksh -m $(1) -o $(2) -g $(3)
+else
+        INSTALL_CMD?=install -m $(1) -o $(2) -g $(3)
+endif
+
 ifdef DEBUGAD
 	DEFINES+=-DDEBUGAD
 endif
@@ -155,6 +168,10 @@ endif
 
 ifneq (${ZLIB_SYSTEM},no)
 	DEFINES+=-DZLIB_SYSTEM
+endif
+
+ifeq (${TARGET}, winagent)
+	PCRE2_SYSTEM=no
 endif
 
 ifeq (${PCRE2_SYSTEM},no)
@@ -201,7 +218,7 @@ endif #winagent
 
 OSSEC_CC      =${QUIET_CC}${MING_BASE}${CC}
 OSSEC_CCBIN   =${QUIET_CCBIN}${MING_BASE}${CC}
-OSSEC_LINK    =${QUIET_LINK}${MING_BASE}ar -crs
+OSSEC_LINK    =${QUIET_LINK}${MING_BASE}ar ${AR_FLAGS} -crs
 OSSEC_RANLIB  =${QUIET_RANLIB}${MING_BASE}ranlib
 OSSEC_WINDRES =${QUIET_CCBIN}${MING_BASE}windres
 
@@ -603,6 +620,7 @@ settings:
 	@echo "    USE_INOTIFY:      ${USE_INOTIFY}"
 	@echo "    USE_SQLITE:       ${USE_SQLITE}"
 	@echo "    USE_PCRE2_JIT:    ${USE_PCRE2_JIT}"
+	@echo "    USE_SYSTEMD:      ${USE_SYSTEMD}"
 	@echo "Mysql settings:"
 	@echo "    includes:         ${MI}"
 	@echo "    libs:             ${ML}"
@@ -907,26 +925,16 @@ os_crypto.a: ${crypto_o}
 	${OSSEC_LINK} $@ $^
 	${OSSEC_RANLIB} $@
 
-#### os_dns ########
-
-ifneq (${TARGET},winagent)
-os_dns_c := $(wildcard os_dns/*.c)
-os_dns_o := $(os_dns_c:.c=.o)
-
-os_dns/os_dns.o: os_dns/os_dns.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -I/usr/local/include -c $^ -o $@
-endif
-
 #### os_mail #########
 
-os_maild_c := $(wildcard os_maild/*.c) $(wildcard os_dns/*.c)
+os_maild_c := $(wildcard os_maild/*.c)
 os_maild_o := $(os_maild_c:.c=.o)
 
 os_maild/%.o: os_maild/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"ossec-maild\" -c $^ -o $@
 
 ossec-maild: ${os_maild_o} ${ossec_libs}
-	${OSSEC_CCBIN} ${OSSEC_CFLAGS} $^ ${OSSEC_LDFLAGS} ${DNS_CFLAGS} -levent ${COMPAT_FILES} -o $@
+	${OSSEC_CCBIN} ${OSSEC_CFLAGS} $^ ${OSSEC_LDFLAGS} ${DNS_CFLAGS} ${COMPAT_FILES} -o $@
 
 #### os_dbd ##########
 
@@ -1004,7 +1012,7 @@ ossec-remoted: ${remoted_o} ${ossec_libs} ${ZLIB_LIB}
 #### ossec-agentd ####
 
 ifneq (${TARGET},winagent)
-client_agent_c := $(wildcard client-agent/*.c)  $(wildcard os_dns/*.c)
+client_agent_c := $(wildcard client-agent/*.c)
 else
 client_agent_c := $(wildcard client-agent/*.c)
 endif
@@ -1014,7 +1022,7 @@ client-agent/%.o: client-agent/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -I./client-agent  ${ZLIB_INCLUDE} -DARGV0=\"ossec-agentd\" -c $^ -o $@
 
 ossec-agentd: ${client_agent_o} ${ossec_libs} ${ZLIB_LIB}
-	${OSSEC_CCBIN} ${OSSEC_CFLAGS} ${ZLIB_INCLUDE} $^ ${OSSEC_LDFLAGS} ${DNS_CFLAGS} -levent ${COMPAT_FILES} -o $@
+	${OSSEC_CCBIN} ${OSSEC_CFLAGS} ${ZLIB_INCLUDE} $^ ${OSSEC_LDFLAGS} ${DNS_CFLAGS} ${COMPAT_FILES} -o $@
 
 #### addagent ######
 

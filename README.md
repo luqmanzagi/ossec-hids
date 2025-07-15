@@ -1,4 +1,4 @@
-OSSEC v3.6.0 Copyright (C) 2019 Trend Micro Inc.
+OSSEC v3.8.0 Copyright (C) 2019 Trend Micro Inc.
 
 # Information about OSSEC 
 
@@ -24,6 +24,23 @@ The development version is hosted on GitHub and just a simple git clone away.
 [![Build Status](https://travis-ci.org/ossec/ossec-hids.svg?branch=master)](https://travis-ci.org/ossec/ossec-hids)
 [![Coverity Scan Build Status](https://scan.coverity.com/projects/1847/badge.svg)](https://scan.coverity.com/projects/1847)
 
+
+## Screenshots ##
+
+*File Integrity Monitoring*
+
+![FIM](./doc/images/fim-test.gif)
+
+
+*Attack Detection*
+
+![SSH Brute Force](./doc/images/ssh-attack.gif)
+
+## Help / Support ##
+
+Join us on slack, ossec.slack.com: Invites to slack@ossec.net
+
+Join us on Discord: https://discord.gg/BXzM75Xzq7
 
 ## Credits and Thanks ##
 
